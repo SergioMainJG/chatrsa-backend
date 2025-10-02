@@ -46,22 +46,18 @@ export class SQLiteService {
   }
   public createUser(user: {name:string,password:string}) {
     const statement = SQLiteService.database.prepare('Insert Into User (username, password) VALUES (?,?)');
-    return statement.run (user.name,user.password).lastInsertRowid;
+    return statement.run(user.name,user.password).lastInsertRowid;
       }
     public getUserById(id:number) {
       const statement = SQLiteService.database.prepare('select id, username, password from User where id=?');
-      return statement.run(id)
+      return statement.get(id);
      } 
     public deleteUser(id:number) {
-      const statement = SQLiteService.database.prepare('delete id from User where id=?');
+      const statement = SQLiteService.database.prepare('delete from User where id=?');
       return statement.run(id)
      }
     public getMessagesByUserId(id:number) {
       const statement = SQLiteService.database.prepare('select id, owner, content from messages where owner=?'); 
       return statement.run(id)
-
      }
 }
- 
-  
-
