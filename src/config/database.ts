@@ -1,5 +1,4 @@
 import { DatabaseSync } from "node:sqlite";
-import { type User } from "../models/user.ts";
 
 export class SQLiteService {
   private static instanceSQLite: SQLiteService;
@@ -45,8 +44,24 @@ export class SQLiteService {
       CREATE INDEX IF NOT EXISTS idx_messages_owner ON Messages(owner)
       `);
   }
-  public createUser(user: User) { }
-  public deleteUser() { }
-  public getUserById() { }
-  public getMessagesByUser() { }
+  public createUser(user: {name:string,password:string}) {
+    const statement = SQLiteService.database.prepare('Insert Into User (username, password) VALUES (?,?)');
+    return statement.run (user.name,user.password).lastInsertRowid;
+      }
+    public getUserById(id:number) {
+      const statement = SQLiteService.database.prepare('select id, username, password from User where id=?');
+      return statement.run(id)
+     } 
+    public deleteUser(id:number) {
+      const statement = SQLiteService.database.prepare('delete id from User where id=?');
+      return statement.run(id)
+     }
+    public getMessagesByUserId(id:number) {
+      const statement = SQLiteService.database.prepare('select id, owner, content from messages where owner=?'); 
+      return statement.run(id)
+
+     }
 }
+ 
+  
+
