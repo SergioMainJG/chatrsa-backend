@@ -19,10 +19,13 @@ export class User {
     if( name.trim().length === 0){return;}
     this._name = name;
   }
-
+  
+  get id(){return this._id}
   get name(){
     return this._name;
   }
+  get password(){return this._password}
+
 
 }
 
