@@ -1,15 +1,17 @@
 import { DatabaseSync } from "node:sqlite";
+import { Result } from "../utils/patterns/result.pattern.ts";
+import { AbsDatabase } from "./database.abstracts.ts";
 
-export class SQLiteService {
+export class SQLiteService implements AbsDatabase{
   private static instanceSQLite: SQLiteService;
   private static name = `char-rsa`;
   private static database: DatabaseSync;
 
-  public static getInstance() {
+  public static getInstance(): SQLiteService {
     if (!SQLiteService.instanceSQLite) SQLiteService.instanceSQLite = new SQLiteService();
     return SQLiteService.instanceSQLite;
   }
-  
+
   private constructor() {
     this.createDatabase();
     this.createUserTable();
@@ -17,7 +19,7 @@ export class SQLiteService {
     this.addForeignKey();
   }
   private createDatabase() {
-    if(!SQLiteService.database)
+    if (!SQLiteService.database)
       SQLiteService.database = new DatabaseSync(SQLiteService.name);
   }
   private createUserTable() {
@@ -44,24 +46,59 @@ export class SQLiteService {
       CREATE INDEX IF NOT EXISTS idx_messages_owner ON Messages(owner)
       `);
   }
-  public createUser(user: {name:string,password:string}) {
-    const statement = SQLiteService.database.prepare('Insert Into User (username, password) VALUES (?,?)');
-    return statement.run (user.name,user.password).lastInsertRowid;
+  public createUser(user: { name: string, password: string }) {
+    return Result.try(
+      () => {
+        const statement = SQLiteService
+        .database
+        .prepare(`
+          Insert Into User (username, password) VALUES (?,?)
+          `);
+        return statement
+        .run(user.name, user.password)
+        .lastInsertRowid;
       }
-    public getUserById(id:number) {
-      const statement = SQLiteService.database.prepare('select id, username, password from User where id=?');
-      return statement.run(id)
-     } 
-    public deleteUser(id:number) {
-      const statement = SQLiteService.database.prepare('delete id from User where id=?');
-      return statement.run(id)
-     }
-    public getMessagesByUserId(id:number) {
-      const statement = SQLiteService.database.prepare('select id, owner, content from messages where owner=?'); 
-      return statement.run(id)
-
-     }
+    );
+  }
+  public getUserById(id: number) {
+    return Result.try(
+      () => {
+        const statement = SQLiteService
+        .database
+        .prepare('select id, username, password from User where id=?');
+        return statement.get(id);
+      }
+    );
+  }
+  public deleteUser(id: number) {
+    return Result.try(
+      () => {
+        const statement = SQLiteService
+        .database
+        .prepare('delete from User where id=?');
+        return statement.run(id)
+      }
+    );
+  }
+  public getMessagesByUserId(id: number) {
+    return Result.try(
+      () => {
+        const statement = SQLiteService
+        .database
+        .prepare('select id, owner, content from messages where owner=?');
+        return statement.run(id)
+      }
+    );
+  }
+  public addMessageOfUser(content: string, userId: number){
+    return Result.try(
+      ()=>{
+        const statement = SQLiteService
+        .database
+        .prepare('Insert Into Messages (owner, content) values (?,?)');
+        return statement.run(userId,content)
+        .lastInsertRowid
+      }
+    );
+  }
 }
- 
-  
-
