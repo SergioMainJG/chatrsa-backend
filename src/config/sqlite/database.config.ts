@@ -4,13 +4,13 @@ import GLOBAL_CONFIG from "../env/get.env.ts";
 const { database } = GLOBAL_CONFIG;
 const { nameDatabase, pathDatabase, tableMessage, tableUser } = database;
 
-export class SQLiteService {
-  private static instanceSQLite: SQLiteService;
+export class SQLiteDatabase {
+  private static instanceSQLite: SQLiteDatabase;
   public static database: DatabaseSync;
 
-  public static getInstance(): SQLiteService {
-    if (!SQLiteService.instanceSQLite) SQLiteService.instanceSQLite = new SQLiteService();
-    return SQLiteService.instanceSQLite;
+  public static getInstance(): SQLiteDatabase {
+    if (!SQLiteDatabase.instanceSQLite) SQLiteDatabase.instanceSQLite = new SQLiteDatabase();
+    return SQLiteDatabase.instanceSQLite;
   }
   private constructor() {
     this.createDatabase();
@@ -22,23 +22,23 @@ export class SQLiteService {
   }
 
   public getDb(): DatabaseSync {
-    return SQLiteService.database;
+    return SQLiteDatabase.database;
   }
 
   private enableWalMode() {
-    SQLiteService.database.exec("PRAGMA journal_mode = WAL;");
+    SQLiteDatabase.database.exec("PRAGMA journal_mode = WAL;");
   }
 
   private enableForeignKeys() {
-    SQLiteService.database.exec("PRAGMA foreign_keys = ON;");
+    SQLiteDatabase.database.exec("PRAGMA foreign_keys = ON;");
   }
 
   private createDatabase() {
-    if (!SQLiteService.database)
-      SQLiteService.database = new DatabaseSync(pathDatabase + nameDatabase);
+    if (!SQLiteDatabase.database)
+      SQLiteDatabase.database = new DatabaseSync(pathDatabase + nameDatabase);
   }
   private createUserTable() {
-    SQLiteService.database.exec(`
+    SQLiteDatabase.database.exec(`
       CREATE TABLE IF NOT EXISTS ${tableUser}(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
@@ -47,7 +47,7 @@ export class SQLiteService {
     `);
   }
   private createMessagesTable() {
-    SQLiteService.database.exec(`
+    SQLiteDatabase.database.exec(`
       CREATE TABLE IF NOT EXISTS ${tableMessage} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         userId INTEGER NOT NULL,
@@ -57,15 +57,15 @@ export class SQLiteService {
     `);
   }
   private createMessageIndex() {
-    SQLiteService.database.exec(`
+    SQLiteDatabase.database.exec(`
       CREATE INDEX IF NOT EXISTS idx_messages_userId ON ${tableMessage}(userId)
       `);
   }
   public closeDatabase() {
-    if (SQLiteService.database && SQLiteService.database.isOpen) {
-      SQLiteService.database.close();
+    if (SQLiteDatabase.database && SQLiteDatabase.database.isOpen) {
+      SQLiteDatabase.database.close();
     }
   }
 }
 
-export const dbInstance = SQLiteService.getInstance().getDb();
+export const dbInstance = SQLiteDatabase.getInstance().getDb();
