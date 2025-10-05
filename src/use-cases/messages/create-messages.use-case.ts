@@ -4,7 +4,7 @@ import { MessageRepository } from "../../repositories/message.repository.ts";
 import { Result } from "../../utils/patterns/result.pattern.ts";
 
 export interface CreateMessageUseCase{
-  execute( dto: CreateMessageDto ): Promise<Result<Messages[], Error>>
+  execute( dto: CreateMessageDto ): Promise<Result<Messages, Error>>
 }
 
 export class CreateMessage implements CreateMessageUseCase{
@@ -13,7 +13,7 @@ export class CreateMessage implements CreateMessageUseCase{
     private readonly repository: MessageRepository
   ){}
 
-  execute(dto: CreateMessageDto): Promise<Result<Messages[], Error>> {
-    return this.repository.getMessagesByUserId(dto);
+  execute(dto: CreateMessageDto): Promise<Result<Messages, Error>> {
+    return this.repository.addMessageOfUser(dto);
   }
 }
