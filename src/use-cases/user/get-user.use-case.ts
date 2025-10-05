@@ -1,6 +1,6 @@
 import { GetUserDto } from "../../dtos/get-user.dto.ts";
 import { User } from "../../models/user.ts";
-import { UserRepository } from "../../repositories/user.repository.ts";
+import { UserRepository } from "../../repositories/user/user.repository.ts";
 import { Result } from "../../utils/patterns/result.pattern.ts";
 
 export interface GetUserUseCase{
