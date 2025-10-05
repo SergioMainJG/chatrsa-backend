@@ -1,6 +1,6 @@
 interface DATABASE_CONFIG {
   readonly pathDatabase: string;
-  readonly database: string;
+  readonly nameDatabase: string;
   readonly tableUser: string;
   readonly tableMessage: string;
 }
@@ -24,7 +24,7 @@ const getENVVars = (name: string, defaultValue: string): string => {
 
 const DATABASE_CONFIG: DATABASE_CONFIG = {
   pathDatabase: getENVVars("PATH_DATABASE", "/var/data/"),
-  database: getENVVars("DATABASE", "chat-rsa-database.db"),
+  nameDatabase: getENVVars("DATABASE", "chat-rsa-database.db"),
   tableUser: getENVVars("TABLE_USER", "Users"),
   tableMessage: getENVVars("TABLE_MESSAGE", "Messages")
 }
