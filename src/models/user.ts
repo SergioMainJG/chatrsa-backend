@@ -29,7 +29,7 @@ export class User {
   public static create(
     { id, name, password }: UserProps
   ):Result<User, Error> {
-    let isValidProps = false;
+    let isValidProps = true;
     const errors: Array<string> = [];
     const resultId = User.validateId(id);
     if (!resultId.isSuccess){
