@@ -1,10 +1,5 @@
+import { UserProps } from "../types/user.types.d.ts";
 import { Result } from "../utils/patterns/result.pattern.ts";
-
-interface UserProps {
-  id: number;
-  name: string;
-  password: string;
-}
 
 export class User {
   private static validateId = (id: number) => {
