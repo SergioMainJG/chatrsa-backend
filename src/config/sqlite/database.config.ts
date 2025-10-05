@@ -6,7 +6,7 @@ const { nameDatabase, pathDatabase, tableMessage, tableUser } = database;
 
 export class SQLiteService {
   private static instanceSQLite: SQLiteService;
-  private static database: DatabaseSync;
+  public static database: DatabaseSync;
 
   public static getInstance(): SQLiteService {
     if (!SQLiteService.instanceSQLite) SQLiteService.instanceSQLite = new SQLiteService();
@@ -14,10 +14,25 @@ export class SQLiteService {
   }
   private constructor() {
     this.createDatabase();
+    this.enableWalMode();
+    this.enableForeignKeys();
     this.createUserTable();
     this.createMessagesTable();
-    this.addForeignKey();
+    this.createMessageIndex(); 
   }
+
+  public getDb(): DatabaseSync {
+    return SQLiteService.database;
+  }
+
+  private enableWalMode() {
+    SQLiteService.database.exec("PRAGMA journal_mode = WAL;");
+  }
+
+  private enableForeignKeys() {
+    SQLiteService.database.exec("PRAGMA foreign_keys = ON;");
+  }
+
   private createDatabase() {
     if (!SQLiteService.database)
       SQLiteService.database = new DatabaseSync(pathDatabase + nameDatabase);
@@ -41,9 +56,16 @@ export class SQLiteService {
       );
     `);
   }
-  private addForeignKey() {
+  private createMessageIndex() {
     SQLiteService.database.exec(`
-      CREATE INDEX IF NOT EXISTS idx_messages_userId ON ${tableUser}(owner)
+      CREATE INDEX IF NOT EXISTS idx_messages_userId ON ${tableMessage}(userId)
       `);
   }
+  public closeDatabase() {
+    if (SQLiteService.database && SQLiteService.database.isOpen) {
+      SQLiteService.database.close();
+    }
+  }
 }
+
+export const dbInstance = SQLiteService.getInstance().getDb();
