@@ -1,11 +1,5 @@
 import { Result } from "../utils/patterns/result.pattern.ts";
 
-interface MessagesProps {
-  id: number;
-  owner: number;
-  content: string;
-}
-
 export class Messages {
   private static validateId = (id: number) => {
     if (Number.isNaN(id))
