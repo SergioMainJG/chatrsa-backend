@@ -1,61 +1,156 @@
 import { JsonResponse } from "../utils/JsonResponse.ts";
 
-type RouteHandler = (req: Request ) => Promise<void | JsonResponse>;
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
-interface Route {
-  pattern: URLPattern;
-  handler: RouteHandler;
+export type Controller = (
+  req: Request,
+  params?: Record<string, string | undefined>
+) => Promise<Response | JsonResponse>;
+
+export class Route {
+  public static get(pattern: string, controller: Controller): Route {
+    return new Route("GET", pattern, controller);
+  }
+
+  public static post(pattern: string, controller: Controller): Route {
+    return new Route("POST", pattern, controller);
+  }
+
+  public static put(pattern: string, controller: Controller): Route {
+    return new Route("PUT", pattern, controller);
+  }
+
+  public static patch(pattern: string, controller: Controller): Route {
+    return new Route("PATCH", pattern, controller);
+  }
+
+  public static delete(pattern: string, controller: Controller): Route {
+    return new Route("DELETE", pattern, controller);
+  }
+
+  private constructor(
+    private readonly _method: HttpMethod,
+    private readonly _pattern: string,
+    private readonly _controller: Controller
+  ) {}
+
+  get method(): HttpMethod {
+    return this._method;
+  }
+
+  get pattern(): string {
+    return this._pattern;
+  }
+
+  get controller(): Controller {
+    return this._controller;
+  }
+
+  public createURLPattern(baseURL?: string): URLPattern {
+    return new URLPattern({ pathname: this._pattern });
+  }
 }
 
 export class Router {
-  private routes: Map<string, Route[]> = new Map();
+  private _routes: Map<HttpMethod, Route[]> = new Map();
+  private baseURL: string;
 
-  private addRoute(method: string, path: string, handler: RouteHandler): void {
-    if (!this.routes.has(method)) {
-      this.routes.set(method, []);
-    }
-    const routesForMethod = this.routes.get(method)!;
-    routesForMethod.push({
-      pattern: new URLPattern({ pathname: path }),
-      handler
-    });
+  constructor(baseURL: string = "http://localhost") {
+    this.baseURL = baseURL;
   }
 
-  get(path: string, handler: RouteHandler): void {
-    this.addRoute('GET', path, handler);
+  public route(route: Route): Router {
+    const method = route.method;
+    const existingRoutes = this._routes.get(method) || [];
+    existingRoutes.push(route);
+    this._routes.set(method, existingRoutes);
+    return this;
   }
 
-  post(path: string, handler: RouteHandler): void {
-    this.addRoute('POST', path, handler);
-  }
-  delete(path: string, handler: RouteHandler): void {
-    this.addRoute('DELETE', path, handler);
+  public routes(routes: Route[]): Router {
+    routes.forEach((route) => this.route(route));
+    return this;
   }
 
-  handleRequest(req: Request): Response | Promise<Response> {
-    const { method } = req;
+  public handler = async (req: Request): Promise<Response> => {
+    const method = req.method as HttpMethod;
     const url = new URL(req.url);
 
-    const routesForMethod = this.routes.get(method);
-    if (!routesForMethod) {
-      return this.sendNotFound();
+    const methodRoutes = this._routes.get(method);
+    if (!methodRoutes || methodRoutes.length === 0) {
+      return this.sendNotFound(`Method ${method} not allowed`);
     }
 
-    for (const route of routesForMethod) {
-      const match = route.pattern.exec(url);
+    for (const route of methodRoutes) {
+      const urlPattern = route.createURLPattern(this.baseURL);
+      const match = urlPattern.exec(req.url);
+
       if (match) {
-        return route.handler(req );
+        try {
+          const params = match.pathname.groups || {};
+
+          const response = await route.controller(req, params);
+
+          if (response instanceof Response) {
+            return response;
+          }
+
+          return new JsonResponse(
+            { error: "Controller did not return a valid response" },
+            { status: 500 }
+          );
+        } catch (error) {
+          console.error("Error processing request:", error);
+          return this.sendInternalError(error);
+        }
       }
     }
 
-    return this.sendNotFound();
+    return this.sendNotFound(`Route ${method} ${url.pathname} not found`);
+  };
+
+  public get(pattern: string, controller: Controller): Router {
+    return this.route(Route.get(pattern, controller));
   }
 
-  private sendNotFound(): Response {
-    const body = JSON.stringify({ error: 'Route not found' });
-    return new Response(body, {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' }
+  public post(pattern: string, controller: Controller): Router {
+    return this.route(Route.post(pattern, controller));
+  }
+
+  public put(pattern: string, controller: Controller): Router {
+    return this.route(Route.put(pattern, controller));
+  }
+
+  public patch(pattern: string, controller: Controller): Router {
+    return this.route(Route.patch(pattern, controller));
+  }
+
+  public delete(pattern: string, controller: Controller): Router {
+    return this.route(Route.delete(pattern, controller));
+  }
+
+  private sendNotFound(message: string = "Route not found"): JsonResponse {
+    return new JsonResponse({ error: message }, { status: 404 });
+  }
+
+  private sendInternalError(error: unknown): JsonResponse {
+    const message =
+      error instanceof Error ? error.message : "Internal Server Error";
+    return new JsonResponse({ error: message }, { status: 500 });
+  }
+
+  public getRoutes(): Map<HttpMethod, Route[]> {
+    return new Map(this._routes);
+  }
+
+  public printRoutes(): void {
+    console.log("\n📋 Registered Routes:");
+    console.log("=".repeat(50));
+    this._routes.forEach((routes, method) => {
+      routes.forEach((route) => {
+        console.log(`${method.padEnd(7)} ${route.pattern}`);
+      });
     });
+    console.log("=".repeat(50) + "\n");
   }
 }
