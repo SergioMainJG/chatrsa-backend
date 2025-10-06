@@ -2,13 +2,15 @@ import { Result } from '../utils/patterns/result.pattern.ts';
 
 export class GetUserDto {
   private constructor(
-    public readonly id: number
+    public readonly id: number,
+    public readonly name: string,
+    public readonly password: string,
   ) { }
 
   static create(
     props: { [key: string]: any }
   ): Result<GetUserDto, Error> {
-    const { id } = props;
+    const { id, name, password } = props;
     if (!id)
       return Result.Failure<GetUserDto, Error>(new Error(`The id must exist`));
     if (typeof id !== "number")
@@ -18,6 +20,20 @@ export class GetUserDto {
     if (!Number.isSafeInteger(id))
       return Result.Failure<GetUserDto, Error>(new Error(`The id must be a safe integer (review: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isSafeInteger")`));
 
-    return Result.Success(new GetUserDto(id));
+    if (!name)
+      return Result.Failure<GetUserDto, Error>(new Error(`The name must exist`));
+    if (typeof name !== "string")
+      return Result.Failure<GetUserDto, Error>(new Error(`The name must be a string`));
+    if (name.trim().length === 0)
+      return Result.Failure<GetUserDto, Error>(new Error(`The name must don't be a void string`));
+
+    if (!password)
+      return Result.Failure<GetUserDto, Error>(new Error(`The password must exist`));
+    if (typeof password !== "string")
+      return Result.Failure<GetUserDto, Error>(new Error(`The password must be a string`));
+    if (password.trim().length === 0)
+      return Result.Failure<GetUserDto, Error>(new Error(`The password must don't be a void string`));
+
+    return Result.Success(new GetUserDto(id, name, password));
   }
 }

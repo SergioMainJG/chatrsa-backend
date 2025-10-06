@@ -16,21 +16,32 @@ const isUser = (obj: any): obj is User => {
 
 export class UserDatasourceSQLite implements UserDatasource {
 
+  private readonly findByNameStatement: StatementSync;
   private readonly findByIdStatement: StatementSync;
   private readonly createStmt: StatementSync;
   private readonly deleteStatement: StatementSync;
 
   constructor() {
+    this.findByNameStatement = dbInstance.prepare(`SELECT * FROM ${GLOBAL_CONFIG.database.tableUser} WHERE name = :name`);
     this.findByIdStatement = dbInstance.prepare(`SELECT * FROM ${GLOBAL_CONFIG.database.tableUser} WHERE id = :id`);
     this.createStmt = dbInstance.prepare(`INSERT INTO ${GLOBAL_CONFIG.database.tableUser} (name, password) VALUES (:name, :password) RETURNING *`);
     this.deleteStatement = dbInstance.prepare(`DELETE FROM ${GLOBAL_CONFIG.database.tableUser} WHERE id = :id`);
   }
-
   getUserById(id: number): Promise<Result<User, Error>> {
     return Result.try(
       () => {
         const user = this.findByIdStatement.get({ ':id': id });
-        if (!isUser(user)) throw new Error(`User with id: "${id}" not found`);
+        if (!isUser(user)) throw new Error(`User with id: "${id}" not found`, {cause:"Not found it"});
+        return user;
+      }
+    );
+  }
+
+  getUserByName(name: string): Promise<Result<User, Error>> {
+    return Result.try(
+      () => {
+        const user = this.findByNameStatement.get({ ':name': name });
+        if (!isUser(user)) throw new Error(`User with name: "${name}" not found`, {cause: "Not found it"});
         return user;
       }
     );
@@ -42,7 +53,7 @@ export class UserDatasourceSQLite implements UserDatasource {
           ':name': name,
           ':password': password,
         });
-        if (!isUser(user)) throw new Error(`The user with name: ${name} is already in use`);
+        if (!isUser(user)) throw new Error(`The user with name: ${name} is already in use`, {cause: "Already exists"});
         return user;
       }
     );
@@ -51,7 +62,7 @@ export class UserDatasourceSQLite implements UserDatasource {
     return Result.try(
       () => {
         const result = this.deleteStatement.run({ ":id": id });
-        if (result.changes === 0) throw new Error(`User with id: "${id}" not found`);
+        if (result.changes === 0) throw new Error(`User with id: "${id}" not found`, {cause: "Not found it"});
         return true;
       }
     );

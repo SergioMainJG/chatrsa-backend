@@ -1,4 +1,6 @@
-type RouteHandler = (req: Request, params: Record<string, string>) => Response | Promise<Response>;
+import { JsonResponse } from "../utils/JsonResponse.ts";
+
+type RouteHandler = (req: Request ) => Promise<void | JsonResponse>;
 
 interface Route {
   pattern: URLPattern;
@@ -42,8 +44,7 @@ export class Router {
     for (const route of routesForMethod) {
       const match = route.pattern.exec(url);
       if (match) {
-        const params = match.pathname.groups as Record<string, string>;
-        return route.handler(req, params);
+        return route.handler(req );
       }
     }
 
