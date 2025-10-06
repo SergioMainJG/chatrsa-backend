@@ -12,7 +12,6 @@ export class GetUserDto {
   ): Result<GetUserDto, Error> {
     const { id, name, password } = props;
     
-    // Validar id solo si se proporciona
     if (id !== undefined) {
       if (typeof id !== "number")
         return Result.Failure<GetUserDto, Error>(new Error(`The id must be a number`));
