@@ -2,23 +2,25 @@ import { Result } from '../utils/patterns/result.pattern.ts';
 
 export class GetUserDto {
   private constructor(
-    public readonly id: number,
     public readonly name: string,
     public readonly password: string,
+    public readonly id?: number,
   ) { }
 
   static create(
     props: { [key: string]: any }
   ): Result<GetUserDto, Error> {
     const { id, name, password } = props;
-    if (!id)
-      return Result.Failure<GetUserDto, Error>(new Error(`The id must exist`));
-    if (typeof id !== "number")
-      return Result.Failure<GetUserDto, Error>(new Error(`The id must be a number`));
-    if (id <= 0)
-      return Result.Failure<GetUserDto, Error>(new Error(`The id must be a positive number`));
-    if (!Number.isSafeInteger(id))
-      return Result.Failure<GetUserDto, Error>(new Error(`The id must be a safe integer (review: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isSafeInteger")`));
+    
+    // Validar id solo si se proporciona
+    if (id !== undefined) {
+      if (typeof id !== "number")
+        return Result.Failure<GetUserDto, Error>(new Error(`The id must be a number`));
+      if (id <= 0)
+        return Result.Failure<GetUserDto, Error>(new Error(`The id must be a positive number`));
+      if (!Number.isSafeInteger(id))
+        return Result.Failure<GetUserDto, Error>(new Error(`The id must be a safe integer (review: "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isSafeInteger")`));
+    }
 
     if (!name)
       return Result.Failure<GetUserDto, Error>(new Error(`The name must exist`));
@@ -34,6 +36,6 @@ export class GetUserDto {
     if (password.trim().length === 0)
       return Result.Failure<GetUserDto, Error>(new Error(`The password must don't be a void string`));
 
-    return Result.Success(new GetUserDto(id, name, password));
+    return Result.Success(new GetUserDto(name, password, id));
   }
 }
