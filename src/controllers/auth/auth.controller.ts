@@ -18,21 +18,29 @@ export class AuthController {
     return new JsonResponse({ error: `Internal Server Error` }, { status: 500 })
   }
 
-  register = async (req: Request): Promise<void | JsonResponse> => {
-    const body = await req.json();
-    const { isSuccess, error, value } = CreateUserDto.create(body);
-    if (!isSuccess) return new JsonResponse({ error }, { status: 400 });
-    this.authService.registerUser(value as CreateUserDto)
-      .then(user => new JsonResponse(user))
-      .catch(error => this.handleError(error))
+  register = async (req: Request): Promise<JsonResponse> => {
+    try {
+      const body = await req.json();
+      const { isSuccess, error, value } = CreateUserDto.create(body);
+      if (!isSuccess) return new JsonResponse({ error }, { status: 400 });
+      
+      const user = await this.authService.registerUser(value as CreateUserDto);
+      return new JsonResponse(user, { status: 201 });
+    } catch (error) {
+      return this.handleError(error);
+    }
   }
 
-  login = async (req: Request): Promise<void | JsonResponse> => {
-    const body = await req.json();
-    const { isSuccess, error, value } = GetUserDto.create(body);
-    if (!isSuccess) return new JsonResponse({ error }, { status: 400 });
-    this.authService.loginUser(value as GetUserDto)
-      .then(user => new JsonResponse(user))
-      .catch(error => this.handleError(error));
+  login = async (req: Request): Promise<JsonResponse> => {
+    try {
+      const body = await req.json();
+      const { isSuccess, error, value } = GetUserDto.create(body);
+      if (!isSuccess) return new JsonResponse({ error }, { status: 400 });
+      
+      const user = await this.authService.loginUser(value as GetUserDto);
+      return new JsonResponse(user, { status: 200 });
+    } catch (error) {
+      return this.handleError(error);
+    }
   }
 }
