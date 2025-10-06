@@ -7,6 +7,7 @@ interface DATABASE_CONFIG {
 
 interface APP_CONFIG {
   readonly port: number;
+  readonly jwtSeed: string;
   readonly database: DATABASE_CONFIG;
 }
 
@@ -32,6 +33,7 @@ const DATABASE_CONFIG: DATABASE_CONFIG = {
 const GLOBAL_CONFIG: APP_CONFIG = {
   port: Number(getENVVars("PORT", "3000")),
   database: DATABASE_CONFIG,
+  jwtSeed: getENVVars("JWT_SEED", "ASDKFJAIOSDFJSAOIDJIASJDF"),
 }
 
 export default GLOBAL_CONFIG;
