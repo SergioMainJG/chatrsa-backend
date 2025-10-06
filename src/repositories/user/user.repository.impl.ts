@@ -10,6 +10,9 @@ export class UserRepositoryImpl implements UserRepository {
   getUserById(user: { id: number; }): Promise<Result<User, Error>> {
     return this.datasource.getUserById(user.id);
   }
+  getUserByName(user: { name: string; }): Promise<Result<User, Error>> {
+    return this.datasource.getUserByName(user.name);
+  }
   createUser(user: { name: string; password: string; }): Promise<Result<User, Error>> {
     return this.datasource.createUser(user.name, user.password);
   }

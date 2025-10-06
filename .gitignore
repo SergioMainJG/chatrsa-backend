@@ -1,2 +1,7 @@
 .env
 *.db
+node_modules
+test
+test/*
+var
+BUGS_EXPLAINED.md
