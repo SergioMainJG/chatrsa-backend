@@ -6,14 +6,10 @@ import { UserDatasourceSQLite } from "../datasources/user/user.datasource.sqlite
 import { GetUser } from '../use-cases/user/get-user.use-case.ts';
 import { CreateUser } from '../use-cases/user/create-user.use-case.ts';
 
-/**
- * Configura e inicializa todas las rutas de la aplicación
- */
 export class AppRoutes {
   static getRouter(): Router {
     const router = new Router();
 
-    // Inicializar dependencias para AuthController
     const userDataSource = new UserDatasourceSQLite();
     const userRepository = new UserRepositoryImpl(userDataSource);
     const createUserUseCase = new CreateUser(userRepository);
@@ -21,11 +17,9 @@ export class AppRoutes {
     const authService = new AuthServices(createUserUseCase, getUserUseCase);
     const authController = new AuthController(authService);
 
-    // ===== Rutas de Autenticación =====
     router.post("/api/auth/register", authController.register);
     router.post("/api/auth/login", authController.login);
 
-    // ===== Rutas de Health Check =====
     router.get("/api/health", async (_req) => {
       return new Response(
         JSON.stringify({
@@ -37,15 +31,6 @@ export class AppRoutes {
         }
       );
     });
-
-    // ===== Ejemplos de rutas con parámetros =====
-    // router.get("/api/users/:id", async (_req, params) => {
-    //   const userId = params?.id;
-    //   return new Response(
-    //     JSON.stringify({ message: `Getting user ${userId}` }),
-    //     { headers: { "Content-Type": "application/json" } }
-    //   );
-    // });
 
     return router;
   }
