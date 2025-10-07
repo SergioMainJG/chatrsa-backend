@@ -10,7 +10,7 @@ async function main() {
   const router = AppRoutes.getRouter();
   const server = new ServerDeno(
     GLOBAL_CONFIG.port,
-    "localhost",
+    GLOBAL_CONFIG.hostname,
     router
   );
   await server.start();
