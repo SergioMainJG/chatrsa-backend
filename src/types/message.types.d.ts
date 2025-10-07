@@ -1,5 +1,6 @@
 interface MessagesProps {
   id: number;
-  owner: number;
+  senderUserId: number;
+  receiverUserId: number;
   content: string;
 }

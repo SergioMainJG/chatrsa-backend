@@ -5,10 +5,7 @@ export abstract class MessageRepository {
   abstract getMessagesByUserId(
     message: { userId: number },
   ): Promise<Result<Messages[], Error>>;
-  abstract getMessagesForUser(
-    message: { recipientId: number },
-  ): Promise<Result<Messages[], Error>>;
   abstract addMessageOfUser(
-    message: { userId: number; content: string },
+    message: { senderUserId: number, receiverUserId: number; content: string },
   ): Promise<Result<Messages, Error>>;
 }

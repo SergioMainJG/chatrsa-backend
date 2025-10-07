@@ -9,8 +9,8 @@ import { AppRoutes } from './routes/app.routes.ts';
 async function main() {
   const router = AppRoutes.getRouter();
   const server = new ServerDeno(
-    GLOBAL_CONFIG.port,
-    GLOBAL_CONFIG.hostname,
+    // GLOBAL_CONFIG.port,
+    // GLOBAL_CONFIG.hostname,
     router
   );
   await server.start();

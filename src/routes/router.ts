@@ -1,4 +1,3 @@
-// router.ts
 import { JsonResponse } from "../utils/JsonResponse.ts";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
@@ -8,7 +7,6 @@ export type Controller = (
   params?: Record<string, string | undefined>
 ) => Promise<Response | JsonResponse>;
 
-// Nuevo tipo para handlers de WebSocket
 export type WebSocketHandler = (req: Request) => Promise<Response> | Response;
 
 export class Route {
@@ -77,7 +75,6 @@ export class Router {
     return this;
   }
 
-  // Nuevo método para registrar rutas WebSocket
   public websocket(pattern: string, handler: WebSocketHandler): Router {
     this._wsRoutes.set(pattern, handler);
     return this;
@@ -86,33 +83,22 @@ export class Router {
   public handler = async (req: Request): Promise<Response> => {
     const url = new URL(req.url);
     
-    // Verificar si es una solicitud de WebSocket PRIMERO
     if (req.headers.get("upgrade") === "websocket") {
-      console.log(`🔍 WebSocket request to: ${url.pathname}`);
-      console.log(`📝 Registered WS routes:`, Array.from(this._wsRoutes.keys()));
-      
-      // Buscar el handler de WebSocket que coincida
       for (const [pattern, handler] of this._wsRoutes.entries()) {
-        console.log(`🔎 Checking pattern: ${pattern}`);
         const urlPattern = new URLPattern({ pathname: pattern });
         const match = urlPattern.exec(url);
         
         if (match) {
-          console.log(`✅ WebSocket route matched: ${pattern}`);
           try {
             return await handler(req);
-          } catch (error) {
-            console.error("❌ Error processing WebSocket request:", error);
+          } catch (_error) {
             return new Response("Internal Server Error", { status: 500 });
           }
         }
       }
       
-      console.log(`❌ No WebSocket route found for: ${url.pathname}`);
       return new Response("WebSocket route not found", { status: 404 });
     }
-
-    // Si no es WebSocket, procesar como ruta HTTP normal
     const method = req.method as HttpMethod;
     const methodRoutes = this._routes.get(method);
     
@@ -136,7 +122,6 @@ export class Router {
             { status: 500 }
           );
         } catch (error) {
-          console.error("Error processing request:", error);
           return this.sendInternalError(error);
         }
       }
@@ -177,27 +162,5 @@ export class Router {
 
   public getRoutes(): Map<HttpMethod, Route[]> {
     return new Map(this._routes);
-  }
-
-  public printRoutes(): void {
-    console.log("\n📋 Registered Routes:");
-    console.log("=".repeat(50));
-    
-    // Imprimir rutas HTTP
-    this._routes.forEach((routes, method) => {
-      routes.forEach((route) => {
-        console.log(`${method.padEnd(7)} ${route.pattern}`);
-      });
-    });
-    
-    // Imprimir rutas WebSocket
-    if (this._wsRoutes.size > 0) {
-      console.log("\n🔌 WebSocket Routes:");
-      this._wsRoutes.forEach((_, pattern) => {
-        console.log(`WS      ${pattern}`);
-      });
-    }
-    
-    console.log("=".repeat(50) + "\n");
   }
 }

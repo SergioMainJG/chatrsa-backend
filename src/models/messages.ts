@@ -16,7 +16,7 @@ export class Messages {
     return Result.Success<string, Error>(content);
   }
   public static create(
-    { id, owner, content}: MessagesProps
+    { id, senderUserId, receiverUserId, content}: MessagesProps
   ):Result<Messages, Error> {
     let isValidProps = true;
     const errors: Array<string> = [];
@@ -30,24 +30,32 @@ export class Messages {
       isValidProps = false;
       errors.push(resultName.error?.message as string);
     }
-    const resultOwner = Messages.validateId(owner);
-    if (!resultOwner.isSuccess) {
+    const resultSender = Messages.validateId(senderUserId);
+    if (!resultSender.isSuccess) {
       isValidProps = false;
-      errors.push(resultOwner.error?.message as string);
+      errors.push(resultSender.error?.message as string);
+    }
+    
+    const resultReceiver = Messages.validateId(receiverUserId);
+    if (!resultReceiver.isSuccess) {
+      isValidProps = false;
+      errors.push(resultReceiver.error?.message as string);
     }
     return isValidProps
-      ? Result.Success<Messages, Error>(new Messages(id, owner, content))
+      ? Result.Success<Messages, Error>(new Messages(id, senderUserId, receiverUserId, content))
       : Result.Failure<Messages, Error>(new Error(errors.join("\n")));
   }
 
   private constructor(
     private readonly _id: number,
-    private readonly _owner: number,
+    private readonly _senderUserId: number,
+    private readonly _receiverUserId: number,
     private readonly _content: string
   ) { }
 
   get id() { return this._id }
-  get owner() { return this._owner; }
+  get senderUserId() { return this._senderUserId; }
+  get receiverUserId() { return this._receiverUserId; }
   get content() { return this._content }
 }
 
