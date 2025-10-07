@@ -15,7 +15,14 @@ export class ServerDeno {
     const app = Deno.serve({
       port: this.port,
       hostname: this.hostname,
-      handler: this.router.handler,
+      handler: async (req: Request): Promise<Response> => {
+        const url = new URL(req.url);
+        console.log(`📨 ${req.method} ${url.pathname}`);
+        if (req.headers.get("upgrade") === "websocket") {
+          console.log("🔌 WebSocket upgrade request detected");
+        }
+        return await this.router.handler(req);
+      },
       onListen: ({ port, hostname }) => {
         console.log(`Server running on http://${hostname}:${port}`);
       },
