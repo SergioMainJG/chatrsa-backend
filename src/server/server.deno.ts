@@ -13,8 +13,8 @@ export class ServerDeno {
     console.log(`\n Starting server on http://${this.hostname}:${this.port}`);
     this.router.printRoutes();
     const app = Deno.serve({
-      port: this.port,
-      hostname: this.hostname,
+      // port: this.port,
+      // hostname: this.hostname,
       handler: async (req: Request): Promise<Response> => {
         const url = new URL(req.url);
         console.log(`📨 ${req.method} ${url.pathname}`);
