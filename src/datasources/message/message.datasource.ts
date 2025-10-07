@@ -5,7 +5,12 @@ export abstract class MessageDatasource {
   abstract getMessagesByUserId(
     userId: number,
   ): Promise<Result<Messages[], Error>>;
+
+  abstract getMessagesForUser(
+    recipientId: number,
+  ): Promise<Result<Messages[], Error>>;
   abstract addMessageOfUser(
-    userId: number, content: string
+    userId: number,
+    content: string
   ): Promise<Result<Messages, Error>>;
 }

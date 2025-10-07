@@ -1,7 +1,6 @@
 // router.ts
 import { JsonResponse } from "../utils/JsonResponse.ts";
 
-// ... (El resto de tus tipos y la clase Route se mantienen igual)
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
 export type Controller = (
@@ -9,8 +8,10 @@ export type Controller = (
   params?: Record<string, string | undefined>
 ) => Promise<Response | JsonResponse>;
 
+// Nuevo tipo para handlers de WebSocket
+export type WebSocketHandler = (req: Request) => Promise<Response> | Response;
+
 export class Route {
-  // ... (código sin cambios)
   public static get(pattern: string, controller: Controller): Route {
     return new Route("GET", pattern, controller);
   }
@@ -56,6 +57,7 @@ export class Route {
 
 export class Router {
   private _routes: Map<HttpMethod, Route[]> = new Map();
+  private _wsRoutes: Map<string, WebSocketHandler> = new Map();
   private baseURL: string;
 
   constructor(baseURL: string = "http://localhost") {
@@ -75,20 +77,51 @@ export class Router {
     return this;
   }
 
-  public handler = async (req: Request): Promise<Response> => {
-    const method = req.method as HttpMethod;
-    const url = new URL(req.url); // Ya tienes el objeto URL aquí.
+  // Nuevo método para registrar rutas WebSocket
+  public websocket(pattern: string, handler: WebSocketHandler): Router {
+    this._wsRoutes.set(pattern, handler);
+    return this;
+  }
 
+  public handler = async (req: Request): Promise<Response> => {
+    const url = new URL(req.url);
+    
+    // Verificar si es una solicitud de WebSocket PRIMERO
+    if (req.headers.get("upgrade") === "websocket") {
+      console.log(`🔍 WebSocket request to: ${url.pathname}`);
+      console.log(`📝 Registered WS routes:`, Array.from(this._wsRoutes.keys()));
+      
+      // Buscar el handler de WebSocket que coincida
+      for (const [pattern, handler] of this._wsRoutes.entries()) {
+        console.log(`🔎 Checking pattern: ${pattern}`);
+        const urlPattern = new URLPattern({ pathname: pattern });
+        const match = urlPattern.exec(url);
+        
+        if (match) {
+          console.log(`✅ WebSocket route matched: ${pattern}`);
+          try {
+            return await handler(req);
+          } catch (error) {
+            console.error("❌ Error processing WebSocket request:", error);
+            return new Response("Internal Server Error", { status: 500 });
+          }
+        }
+      }
+      
+      console.log(`❌ No WebSocket route found for: ${url.pathname}`);
+      return new Response("WebSocket route not found", { status: 404 });
+    }
+
+    // Si no es WebSocket, procesar como ruta HTTP normal
+    const method = req.method as HttpMethod;
     const methodRoutes = this._routes.get(method);
+    
     if (!methodRoutes || methodRoutes.length === 0) {
       return this.sendNotFound(`Method ${method} not allowed`);
     }
 
     for (const route of methodRoutes) {
       const urlPattern = route.createURLPattern(this.baseURL);
-
-      // --- ¡LA CORRECCIÓN ESTÁ AQUÍ! ---
-      // En lugar de req.url (string), pasa el objeto 'url'
       const match = urlPattern.exec(url);
 
       if (match) {
@@ -112,7 +145,6 @@ export class Router {
     return this.sendNotFound(`Route ${method} ${url.pathname} not found`);
   };
 
-  // ... (el resto de la clase Router sin cambios)
   public get(pattern: string, controller: Controller): Router {
     return this.route(Route.get(pattern, controller));
   }
@@ -150,11 +182,22 @@ export class Router {
   public printRoutes(): void {
     console.log("\n📋 Registered Routes:");
     console.log("=".repeat(50));
+    
+    // Imprimir rutas HTTP
     this._routes.forEach((routes, method) => {
       routes.forEach((route) => {
         console.log(`${method.padEnd(7)} ${route.pattern}`);
       });
     });
+    
+    // Imprimir rutas WebSocket
+    if (this._wsRoutes.size > 0) {
+      console.log("\n🔌 WebSocket Routes:");
+      this._wsRoutes.forEach((_, pattern) => {
+        console.log(`WS      ${pattern}`);
+      });
+    }
+    
     console.log("=".repeat(50) + "\n");
   }
 }
