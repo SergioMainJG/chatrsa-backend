@@ -7,7 +7,7 @@ export class MessageController {
   constructor(
     private readonly messageService: MessageService,
     private readonly messageRepository: MessageRepository,
-    private readonly userRepository: UserRepository
+    private readonly userRepository: UserRepository,
   ) { }
 
   public handleConnection = async (socket: WebSocket, url: URL): Promise<void> => {
@@ -17,139 +17,205 @@ export class MessageController {
         socket.close(1008, 'No token provided');
         return;
       }
+
       let decodedToken;
       try {
         decodedToken = await JWTAdapter.validateToken<{ id: number }>(token);
       } catch (_error) {
-        socket.close(1008, 'Invalid or expired token');
+        socket.close(1008, 'Invalid token');
         return;
       }
-      const userId = decodedToken.id;
-      const userResult = await this.userRepository.getUserById({ id: userId });
+      const userResult = await this.userRepository.getUserById({ id: decodedToken.id });
       if (!userResult.isSuccess || !userResult.value) {
         socket.close(1008, 'User not found');
         return;
       }
-      const userName = userResult.value.name;
-      this.messageService.addClient(socket, userId, userName);
-      socket.send(JSON.stringify({
-        type: 'connection',
-        status: 'connected',
-        userId: userId,
-        userName: userName,
-        timestamp: new Date().toISOString()
-      }));
+
+      const user = userResult.value;
+      this.messageService.addClient(socket, user.id, user.name);
+
+      socket.onopen = () => {
+        socket.send(JSON.stringify({
+          type: 'connection',
+          status: 'connected',
+          userId: user.id,
+          userName: user.name,
+          timestamp: new Date().toISOString()
+        }));
+      };
+
       socket.onmessage = async (event) => {
         try {
-          const data = JSON.parse(event.data);
-          switch (data.type) {
-            case 'message':
-              await this.messageService.sendPrivateMessage(socket, event.data);
-              break;
-            case 'get_pending_messages':
-              await this.sendPendingMessages(socket, userId, userName);
-              break;
-            case 'get_online_users':
-              this.sendOnlineUsers(socket);
-              break;
-            default:
-              await this.messageService.sendPrivateMessage(socket, event.data);
-          }
+          await this.handleMessage(socket, event.data);
         } catch (error) {
-          socket.send(JSON.stringify({
-            type: 'error',
-            error: 'Failed to process message',
-            details: error.message,
-            timestamp: new Date().toISOString()
-          }));
+          this.sendError(socket, 'Invalid message format or server error');
         }
       };
+
       socket.onclose = () => {
         this.messageService.removeClient(socket);
       };
-      socket.onerror = (_error) => {
+
+      socket.onerror = (error) => {
         this.messageService.removeClient(socket);
       };
-    } catch (_error) {
+
+    } catch (error) {
       try {
-        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+        if (socket.readyState !== WebSocket.CLOSED && socket.readyState !== WebSocket.CLOSING) {
           socket.close(1011, 'Internal server error');
         }
-      } catch (_closeError) {
-        //Catch, but there's nothing to do, just add a log
+      } catch (closeError) {
       }
     }
   }
-  private async sendPendingMessages(socket: WebSocket, userId: number, userName: string): Promise<void> {
+  private async handleMessage(socket: WebSocket, rawData: string): Promise<void> {
+    const clientInfo = this.messageService.getClientInfo(socket);
+    if (!clientInfo) {
+      return;
+    }
+
+    const data = JSON.parse(rawData);
+    switch (data.type) {
+      case 'get_pending_messages':
+        await this.sendPendingMessages(socket, clientInfo.userId);
+        break;
+
+      case 'send_message':
+        await this.handleSendMessage(socket, data, clientInfo);
+        break;
+
+      case 'get_online_users':
+        this.sendOnlineUsers(socket);
+        break;
+
+      default:
+        this.sendError(socket, `Unknown message type: ${data.type}`);
+    }
+  }
+  private async sendPendingMessages(socket: WebSocket, userId: number): Promise<void> {
     try {
-      const messagesResult = await this.messageRepository.getMessagesForUser({
-        recipientId: userId
-      });
+      const messagesResult = await this.messageRepository.getMessagesByUserId({ userId });
       if (!messagesResult.isSuccess) {
-        socket.send(JSON.stringify({
-          type: 'error',
-          error: 'Failed to retrieve messages',
-          timestamp: new Date().toISOString()
-        }));
+        this.sendError(socket, 'Failed to retrieve messages');
         return;
       }
       const messages = messagesResult.value || [];
-      const processedMessages = await Promise.all(
+      const enrichedMessages = await Promise.all(
         messages.map(async (msg) => {
-          try {
-            const parsedContent = JSON.parse(msg.content);
-            const senderResult = await this.userRepository.getUserById({ id: msg.owner });
-            const senderName = senderResult.isSuccess && senderResult.value 
-              ? senderResult.value.name 
-              : `User_${msg.owner}`;
-            return {
-              id: msg.id,
-              from: senderName, 
-              to: userName,       
-              content: parsedContent.content, 
-              timestamp: parsedContent.timestamp
-            };
-          } catch (_error) {
-            return {
-              id: msg.id,
-              from: `User_${msg.owner}`,
-              content: msg.content,
-              timestamp: new Date().toISOString()
-            };
-          }
+          const senderResult = await this.userRepository.getUserById({ id: msg.senderUserId });
+          const receiverResult = await this.userRepository.getUserById({ id: msg.receiverUserId });
+
+          return {
+            id: msg.id,
+            from: senderResult.value?.name || `User_${msg.senderUserId}`,
+            to: receiverResult.value?.name || `User_${msg.receiverUserId}`,
+            content: msg.content,
+            timestamp: new Date().toISOString()
+          };
         })
       );
-      socket.send(JSON.stringify({
+
+      this.sendMessage(socket, {
         type: 'pending_messages',
-        messages: processedMessages,
-        count: processedMessages.length,
+        messages: enrichedMessages,
+        count: enrichedMessages.length,
         timestamp: new Date().toISOString()
-      }));
+      });
+
+    } catch (error) {
+      this.sendError(socket, 'Internal server error');
+    }
+  }
+  private async handleSendMessage(
+    socket: WebSocket,
+    data: any,
+    senderInfo: { userId: number; userName: string }
+  ): Promise<void> {
+    try {
+      const { to, content } = data;
+      if (!to || !content) {
+        this.sendError(socket, 'Missing "to" or "content" field');
+        return;
+      }
+      const recipientResult = await this.userRepository.getUserByName({ name: to });
+      if (!recipientResult.isSuccess || !recipientResult.value) {
+        this.sendError(socket, `User '${to}' not found`);
+        return;
+      }
+      const recipient = recipientResult.value;
+      const saveResult = await this.messageRepository.addMessageOfUser({
+        senderUserId: senderInfo.userId,
+        receiverUserId: recipient.id,
+        content: content
+      });
+
+      if (!saveResult.isSuccess) {
+        this.sendError(socket, 'Failed to save message');
+        return;
+      }
+      const onlineUsers = this.messageService.getOnlineUsers();
+      const recipientOnline = onlineUsers.find(u => u.userId === recipient.id);
+      if (recipientOnline) {
+        let recipientSocket: WebSocket | undefined;
+        for (const [sock, info] of (this.messageService as any).clients.entries()) {
+          if (info.userId === recipient.id) {
+            recipientSocket = sock;
+            break;
+          }
+        }
+        if (recipientSocket && recipientSocket.readyState === WebSocket.OPEN) {
+          this.sendMessage(recipientSocket, {
+            type: 'new_message',
+            messageId: saveResult.value?.id,
+            from: senderInfo.userName,
+            to: recipient.name,
+            content: content,
+            timestamp: new Date().toISOString()
+          });
+          this.sendMessage(socket, {
+            type: 'ack',
+            status: 'delivered',
+            messageId: saveResult.value?.id,
+            to: recipient.name,
+            timestamp: new Date().toISOString()
+          });
+          return;
+        }
+      }
+      this.sendMessage(socket, {
+        type: 'ack',
+        status: 'saved',
+        messageId: saveResult.value?.id,
+        to: recipient.name,
+        delivered: false,
+        timestamp: new Date().toISOString()
+      });
+
 
     } catch (_error) {
-      socket.send(JSON.stringify({
-        type: 'error',
-        error: 'Internal server error',
-        timestamp: new Date().toISOString()
-      }));
+      this.sendError(socket, 'Failed to send message');
     }
   }
   private sendOnlineUsers(socket: WebSocket): void {
-    try {
-      const onlineUsers = this.messageService.getOnlineUsers();
-      
-      socket.send(JSON.stringify({
-        type: 'online_users',
-        users: onlineUsers,
-        count: onlineUsers.length,
-        timestamp: new Date().toISOString()
-      }));
-    } catch (_error) {
-      socket.send(JSON.stringify({
-        type: 'error',
-        error: 'Failed to get online users',
-        timestamp: new Date().toISOString()
-      }));
+    const onlineUsers = this.messageService.getOnlineUsers();
+    this.sendMessage(socket, {
+      type: 'online_users',
+      users: onlineUsers.map(u => u.userName),
+      count: onlineUsers.length,
+      timestamp: new Date().toISOString()
+    });
+  }
+  private sendError(socket: WebSocket, message: string): void {
+    this.sendMessage(socket, {
+      type: 'error',
+      error: message,
+      timestamp: new Date().toISOString()
+    });
+  }
+  private sendMessage(socket: WebSocket, data: any): void {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(data));
     }
   }
 }

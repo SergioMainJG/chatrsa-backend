@@ -50,16 +50,21 @@ export class SQLiteDatabase {
     SQLiteDatabase.database.exec(`
       CREATE TABLE IF NOT EXISTS ${tableMessage} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        userId INTEGER NOT NULL,
+        senderUserId INTEGER NOT NULL,
+        receiverUserId INTEGER NOT NULL,
         content TEXT NOT NULL,
-        FOREIGN KEY (userId) REFERENCES ${tableUser}(id) ON DELETE CASCADE
+        FOREIGN KEY (senderUserId) REFERENCES ${tableUser}(id) ON DELETE CASCADE,
+        FOREIGN KEY (receiverUserId) REFERENCES ${tableUser}(id) ON DELETE CASCADE
       );
     `);
   }
   private createMessageIndex() {
     SQLiteDatabase.database.exec(`
-      CREATE INDEX IF NOT EXISTS idx_messages_userId ON ${tableMessage}(userId)
-      `);
+      CREATE INDEX IF NOT EXISTS idx_messages_senderId ON ${tableMessage}(senderUserId)
+    `);
+    SQLiteDatabase.database.exec(`
+      CREATE INDEX IF NOT EXISTS idx_messages_receiverId ON ${tableMessage}(receiverUserId)
+    `);
   }
   public closeDatabase() {
     if (SQLiteDatabase.database && SQLiteDatabase.database.isOpen) {

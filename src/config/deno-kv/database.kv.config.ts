@@ -31,7 +31,6 @@ class KVDatabase {
     if (KVDatabase.database) {
       KVDatabase.database.close();
       KVDatabase.database = undefined;
-      console.log("Deno KV connection closed.");
     }
   }
 }

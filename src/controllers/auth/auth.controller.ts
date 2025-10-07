@@ -19,7 +19,6 @@ export class AuthController {
   }
 
   register = async (req: Request): Promise<JsonResponse> => {
-    console.log("register response");
     try {
       const body = await req.json();
       const { isSuccess, error, value } = CreateUserDto.create(body);
@@ -33,7 +32,6 @@ export class AuthController {
   }
 
   login = async (req: Request): Promise<JsonResponse> => {
-    console.log("login response");
     try {
       const body = await req.json();
       const { isSuccess, error, value } = GetUserDto.create(body);

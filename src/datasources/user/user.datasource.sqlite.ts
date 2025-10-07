@@ -1,6 +1,6 @@
 import { StatementSync } from "node:sqlite";
 import GLOBAL_CONFIG from "../../config/env/get.env.ts";
-import { dbInstance } from "../../config/sqlite/database.config.ts";
+import { dbInstance } from "../../config/sqlite/database.sqlite.config.ts";
 import { UserDatasource } from "./user.datasource.ts";
 import { User } from "../../models/user.ts";
 import { Result } from "../../utils/patterns/result.pattern.ts";

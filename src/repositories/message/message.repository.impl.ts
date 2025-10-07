@@ -10,10 +10,7 @@ export class MessageRepositoryImpl implements MessageRepository {
   getMessagesByUserId(message: { userId: number; }): Promise<Result<Messages[], Error>> {
     return this.datasource.getMessagesByUserId(message.userId);
   }
-  getMessagesForUser(message: { recipientId: number; }): Promise<Result<Messages[], Error>> {
-    return this.datasource.getMessagesForUser(message.recipientId);
-  }
-  addMessageOfUser(message: { userId: number; content: string; }): Promise<Result<Messages, Error>> {
-    return this.datasource.addMessageOfUser(message.userId, message.content);
+  addMessageOfUser(message: { senderUserId: number, receiverUserId: number; content: string; }): Promise<Result<Messages, Error>> {
+    return this.datasource.addMessageOfUser(message.senderUserId, message.receiverUserId, message.content);
   }
 }

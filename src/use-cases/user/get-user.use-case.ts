@@ -12,22 +12,32 @@ export interface GetUserUseCase {
 export class GetUser implements GetUserUseCase {
 
   constructor(
-    private readonly repository: UserRepository
+    private readonly repositories: UserRepository[]
   ) { }
 
-  async execute(getUserDto: GetUserDto): Promise<Result<User, Error>> {
-    // Buscar usuario por nombre
-    const { isSuccess, error, value } = await this.repository.getUserByName({ name: getUserDto.name });
-    if (!isSuccess) {
-      return Result.Failure(CustomError.unauthorized(`Invalid credentials`));
-    }
-    
-    // Verificar contraseña (hash primero, contraseña plana después)
-    const arePasswordsEquals = await Encrypter.compare(value?.password as string, getUserDto.password);
-    if (!arePasswordsEquals) {
-      return Result.Failure(CustomError.unauthorized(`Invalid credentials`));
-    }
+  private async getUserFromRepositories(
+    user: { name: string }    
+  ): Promise<Result<User, Error>[]> {
+    const promisesQueries = this.repositories.map((repository) => repository.getUserByName(user));
+    return await Promise.all(promisesQueries);
+  }
 
-    return Result.Success(value as User);
+  async execute(getUserDto: GetUserDto): Promise<Result<User, Error>> {
+    const queriesResults = (await this.getUserFromRepositories({name: getUserDto.name}))
+    const successfulResult = queriesResults.find(result => result.isSuccess);
+    if (
+      !successfulResult ||
+      !successfulResult.value
+    ) {
+      return Result.Failure<User, Error>(CustomError.unauthorized(`Invalid credentials`));
+    }
+    const user = successfulResult.value;
+    const arePasswordsEquals = await Encrypter.compare(
+      user.password as string,
+      getUserDto.password);
+    if (!arePasswordsEquals) {
+      return Result.Failure(CustomError.unauthorized(`Invalid credentials, password is wrong`));
+    }
+    return Result.Success<User, Error>(user);
   }
 }
