@@ -6,6 +6,9 @@ import { UserDatasourceSQLite } from "../datasources/user/user.datasource.sqlite
 import { GetUser } from '../use-cases/user/get-user.use-case.ts';
 import { CreateUser } from '../use-cases/user/create-user.use-case.ts';
 
+import { MessageController } from "../controllers/messages/message.controller.ts";
+import { MessageService } from "../services/message/message.service.ts";
+
 export class AppRoutes {
   static getRouter(): Router {
     const router = new Router();
@@ -17,10 +20,24 @@ export class AppRoutes {
     const authService = new AuthServices(createUserUseCase, getUserUseCase);
     const authController = new AuthController(authService);
 
+    const messageService = new MessageService();
+    const messageController = new MessageController(messageService);
+
     router.post("/api/auth/register", authController.register);
     router.post("/api/auth/login", authController.login);
 
+    router.get('/ws', async (req) => {
+      console.log("Conexión iniciada");
+      if (req.headers.get("upgrade") !== "websocket") {
+        return new Response(null, { status: 501 });
+      }
+      const { socket, response } = Deno.upgradeWebSocket(req);
+      await messageController.handleConnection(socket, new URL(req.url));
+      return response;
+    });
+
     router.get("/api/health", async (_req) => {
+      console.log("health");
       return new Response(
         JSON.stringify({
           status: "ok",
@@ -31,6 +48,9 @@ export class AppRoutes {
         }
       );
     });
+
+
+
 
     return router;
   }

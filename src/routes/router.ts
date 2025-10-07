@@ -1,5 +1,7 @@
+// router.ts
 import { JsonResponse } from "../utils/JsonResponse.ts";
 
+// ... (El resto de tus tipos y la clase Route se mantienen igual)
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
 
 export type Controller = (
@@ -8,6 +10,7 @@ export type Controller = (
 ) => Promise<Response | JsonResponse>;
 
 export class Route {
+  // ... (código sin cambios)
   public static get(pattern: string, controller: Controller): Route {
     return new Route("GET", pattern, controller);
   }
@@ -74,7 +77,7 @@ export class Router {
 
   public handler = async (req: Request): Promise<Response> => {
     const method = req.method as HttpMethod;
-    const url = new URL(req.url);
+    const url = new URL(req.url); // Ya tienes el objeto URL aquí.
 
     const methodRoutes = this._routes.get(method);
     if (!methodRoutes || methodRoutes.length === 0) {
@@ -83,18 +86,18 @@ export class Router {
 
     for (const route of methodRoutes) {
       const urlPattern = route.createURLPattern(this.baseURL);
-      const match = urlPattern.exec(req.url);
+
+      // --- ¡LA CORRECCIÓN ESTÁ AQUÍ! ---
+      // En lugar de req.url (string), pasa el objeto 'url'
+      const match = urlPattern.exec(url);
 
       if (match) {
         try {
           const params = match.pathname.groups || {};
-
           const response = await route.controller(req, params);
-
           if (response instanceof Response) {
             return response;
           }
-
           return new JsonResponse(
             { error: "Controller did not return a valid response" },
             { status: 500 }
@@ -109,6 +112,7 @@ export class Router {
     return this.sendNotFound(`Route ${method} ${url.pathname} not found`);
   };
 
+  // ... (el resto de la clase Router sin cambios)
   public get(pattern: string, controller: Controller): Router {
     return this.route(Route.get(pattern, controller));
   }
