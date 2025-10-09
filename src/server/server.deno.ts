@@ -1,3 +1,4 @@
+import { corsMiddleware } from "../middlwares/cors.middleware.ts";
 import { Router } from "../routes/router.ts";
 
 export class ServerDeno {
@@ -10,16 +11,17 @@ export class ServerDeno {
   ) {}
 
   async start() {
+    const corsHandler = corsMiddleware(this.router.handler);
     const app = Deno.serve({
       // port: this.port,
       // hostname: this.hostname,
       handler: async (req: Request): Promise<Response> => {
-        const url = new URL(req.url);
-        if (req.headers.get("upgrade") === "websocket") {
-        }
-        return await this.router.handler(req);
+        // const url = new URL(req.url);
+        // if (req.headers.get("upgrade") === "websocket") {
+        // }
+        return await corsHandler(req);
       },
-      onListen: ({ port, hostname }) => {
+      onListen: () => {
       },
     });
 

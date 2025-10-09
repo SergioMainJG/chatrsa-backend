@@ -6,8 +6,8 @@ interface DATABASE_CONFIG {
 }
 
 interface APP_CONFIG {
-  // readonly port: number;
-  // readonly hostname: string;
+  readonly port: number;
+  readonly hostname: string;
   readonly jwtSeed: string;
   readonly database: DATABASE_CONFIG;
 }
@@ -32,8 +32,8 @@ const DATABASE_CONFIG: DATABASE_CONFIG = {
 }
 
 const GLOBAL_CONFIG: APP_CONFIG = {
-  // port: Number(getENVVars("PORT", "3000")),
-  // hostname: getENVVars("HOSTNAME", "localhost"),
+  port: Number(getENVVars("PORT", "3000")),
+  hostname: getENVVars("HOSTNAME", "localhost"),
   database: DATABASE_CONFIG,
   jwtSeed: getENVVars("JWT_SEED", "ASDKFJAIOSDFJSAOIDJIASJDF"),
 }
