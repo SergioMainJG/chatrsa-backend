@@ -35,7 +35,7 @@ export class SQLiteDatabase {
 
   private createDatabase() {
     if (!SQLiteDatabase.database)
-      SQLiteDatabase.database = new DatabaseSync(pathDatabase + nameDatabase);
+      SQLiteDatabase.database = new DatabaseSync(nameDatabase);
   }
   private createUserTable() {
     SQLiteDatabase.database.exec(`
