@@ -1,0 +1,19 @@
+services:
+  backend:
+    build: .
+    container_name: chat-rsa-backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./var/data:/app/var/data
+      - ./:/app
+    environment:
+      - PROD=false
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - PATH_DATABASE=/app/var/data/
+      - DATABASE=chat-rsa-database.db
+      - TABLE_USER=Users
+      - TABLE_MESSAGE=Messages
+      - JWT_SEED="KM34-2IO%5--.32S8_.DIKL'M12!40EFD:::S09123KL123"
+    restart: unless-stopped
