@@ -81,54 +81,106 @@ export class Router {
   }
 
   public handler = async (req: Request): Promise<Response> => {
-    const url = new URL(req.url);
-    
-    if (req.headers.get("upgrade") === "websocket") {
-      for (const [pattern, handler] of this._wsRoutes.entries()) {
-        const urlPattern = new URLPattern({ pathname: pattern });
-        const match = urlPattern.exec(url);
-        
-        if (match) {
-          try {
-            return await handler(req);
-          } catch (_error) {
-            return new Response("Internal Server Error", { status: 500 });
+    try {
+      const url = new URL(req.url);
+      const method = req.method as HttpMethod;
+      const origin = req.headers.get('Origin') || '*';
+
+      console.log(`📨 ${method} ${url.pathname}`);
+
+      // 1. Manejar PREFLIGHT (OPTIONS)
+      if (method === 'OPTIONS') {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': origin,
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Max-Age': '86400',
+          },
+        });
+      }
+
+      // 2. Verificar si es WebSocket
+      if (req.headers.get("upgrade") === "websocket") {
+        console.log('🔌 WebSocket upgrade request');
+        for (const [pattern, handler] of this._wsRoutes.entries()) {
+          const urlPattern = new URLPattern({ pathname: pattern });
+          if (urlPattern.exec(url)) {
+            const response = await handler(req);
+            return this.addCorsHeaders(response, origin);
           }
         }
+        return new Response("WebSocket route not found", { status: 404 });
       }
-      
-      return new Response("WebSocket route not found", { status: 404 });
-    }
-    const method = req.method as HttpMethod;
-    const methodRoutes = this._routes.get(method);
-    
-    if (!methodRoutes || methodRoutes.length === 0) {
-      return this.sendNotFound(`Method ${method} not allowed`);
-    }
 
-    for (const route of methodRoutes) {
-      const urlPattern = route.createURLPattern(this.baseURL);
-      const match = urlPattern.exec(url);
+      // 3. Rutas HTTP normales
+      const methodRoutes = this._routes.get(method);
+      if (!methodRoutes || methodRoutes.length === 0) {
+        console.log(`❌ No routes for method: ${method}`);
+        return this.addCorsHeaders(
+          new Response(JSON.stringify({ error: `Method ${method} not allowed` }), {
+            status: 405,
+            headers: { "Content-Type": "application/json" }
+          }),
+          origin
+        );
+      }
 
-      if (match) {
-        try {
+      for (const route of methodRoutes) {
+        const urlPattern = route.createURLPattern(this.baseURL);
+        const match = urlPattern.exec(url);
+
+        if (match) {
+          console.log(`✅ Route matched: ${route.pattern}`);
           const params = match.pathname.groups || {};
           const response = await route.controller(req, params);
-          if (response instanceof Response) {
-            return response;
+          
+          // ✅ CONVERTIR A RESPONSE SI ES JsonResponse
+          if (response instanceof JsonResponse) {
+            return this.addCorsHeaders(response, origin);
           }
-          return new JsonResponse(
-            { error: "Controller did not return a valid response" },
-            { status: 500 }
-          );
-        } catch (error) {
-          return this.sendInternalError(error);
+          
+          return this.addCorsHeaders(response, origin);
         }
       }
-    }
 
-    return this.sendNotFound(`Route ${method} ${url.pathname} not found`);
+      console.log(`❌ No route found for: ${method} ${url.pathname}`);
+      return this.addCorsHeaders(
+        new Response(JSON.stringify({ error: `Route ${method} ${url.pathname} not found` }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" }
+        }),
+        origin
+      );
+
+    } catch (error) {
+      console.error('❌ Router handler error:', error);
+      return new Response(JSON.stringify({ 
+        error: 'Internal Server Error',
+        details: error.message 
+      }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
   };
+
+  /**
+   * Añade headers de CORS a una respuesta
+   */
+  private addCorsHeaders(response: Response, origin: string): Response {
+    const headers = new Headers(response.headers);
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: headers
+    });
+  }
 
   public get(pattern: string, controller: Controller): Router {
     return this.route(Route.get(pattern, controller));
@@ -150,17 +202,27 @@ export class Router {
     return this.route(Route.delete(pattern, controller));
   }
 
-  private sendNotFound(message: string = "Route not found"): JsonResponse {
-    return new JsonResponse({ error: message }, { status: 404 });
-  }
-
-  private sendInternalError(error: unknown): JsonResponse {
-    const message =
-      error instanceof Error ? error.message : "Internal Server Error";
-    return new JsonResponse({ error: message }, { status: 500 });
-  }
-
   public getRoutes(): Map<HttpMethod, Route[]> {
     return new Map(this._routes);
+  }
+
+  public printRoutes(): void {
+    console.log("\n📋 Registered Routes:");
+    console.log("=".repeat(50));
+    
+    this._routes.forEach((routes, method) => {
+      routes.forEach((route) => {
+        console.log(`${method.padEnd(7)} ${route.pattern}`);
+      });
+    });
+    
+    if (this._wsRoutes.size > 0) {
+      console.log("\n🔌 WebSocket Routes:");
+      this._wsRoutes.forEach((_, pattern) => {
+        console.log(`WS      ${pattern}`);
+      });
+    }
+    
+    console.log("=".repeat(50) + "\n");
   }
 }

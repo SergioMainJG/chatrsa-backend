@@ -1,30 +1,30 @@
-import { corsMiddleware } from "../middlwares/cors.middleware.ts";
 import { Router } from "../routes/router.ts";
 
 export class ServerDeno {
-  public readonly app: any;
-
   constructor(
-    // private readonly port: number,
-    // private readonly hostname: string,
+    private readonly port: number,
+    private readonly hostname: string,
     private readonly router: Router
   ) {}
 
   async start() {
-    const corsHandler = corsMiddleware(this.router.handler);
-    const app = Deno.serve({
-      // port: this.port,
-      // hostname: this.hostname,
-      handler: async (req: Request): Promise<Response> => {
-        // const url = new URL(req.url);
-        // if (req.headers.get("upgrade") === "websocket") {
-        // }
-        return await corsHandler(req);
-      },
-      onListen: () => {
-      },
-    });
+    console.log(`\n🚀 Starting server on http://${this.hostname}:${this.port}`);
+    this.router.printRoutes();
+    
+    try {
+      const app = Deno.serve({
+        port: this.port,
+        hostname: this.hostname,
+        handler: this.router.handler,
+        onListen: ({ port, hostname }) => {
+          console.log(`✅ Server running on http://${hostname}:${port}`);
+        },
+      });
 
-    await app.finished;
+      await app.finished;
+    } catch (error) {
+      console.error('❌ Server failed to start:', error);
+      throw error;
+    }
   }
 }
