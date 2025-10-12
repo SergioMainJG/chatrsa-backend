@@ -5,3 +5,5 @@ test
 test/*
 var
 BUGS_EXPLAINED.md
+*.db-shm
+*.db-wal
