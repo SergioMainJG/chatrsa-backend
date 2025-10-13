@@ -34,7 +34,7 @@ export class Route {
     private readonly _method: HttpMethod,
     private readonly _pattern: string,
     private readonly _controller: Controller
-  ) {}
+  ) { }
 
   get method(): HttpMethod {
     return this._method;
@@ -100,19 +100,19 @@ export class Router {
           },
         });
       }
-
-      // 2. Verificar si es WebSocket
       if (req.headers.get("upgrade") === "websocket") {
         console.log('🔌 WebSocket upgrade request');
         for (const [pattern, handler] of this._wsRoutes.entries()) {
           const urlPattern = new URLPattern({ pathname: pattern });
           if (urlPattern.exec(url)) {
-            const response = await handler(req);
-            return this.addCorsHeaders(response, origin);
+            // 🔴 IMPORTANTE: devolver la respuesta de upgrade tal cual
+            // NADA de addCorsHeaders aquí
+            return await handler(req);
           }
         }
         return new Response("WebSocket route not found", { status: 404 });
       }
+
 
       // 3. Rutas HTTP normales
       const methodRoutes = this._routes.get(method);
@@ -135,12 +135,12 @@ export class Router {
           console.log(`✅ Route matched: ${route.pattern}`);
           const params = match.pathname.groups || {};
           const response = await route.controller(req, params);
-          
+
           // ✅ CONVERTIR A RESPONSE SI ES JsonResponse
           if (response instanceof JsonResponse) {
             return this.addCorsHeaders(response, origin);
           }
-          
+
           return this.addCorsHeaders(response, origin);
         }
       }
@@ -156,9 +156,9 @@ export class Router {
 
     } catch (error) {
       console.error('❌ Router handler error:', error);
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: 'Internal Server Error',
-        details: error.message 
+        details: error.message
       }), {
         status: 500,
         headers: { "Content-Type": "application/json" }
@@ -209,20 +209,20 @@ export class Router {
   public printRoutes(): void {
     console.log("\n📋 Registered Routes:");
     console.log("=".repeat(50));
-    
+
     this._routes.forEach((routes, method) => {
       routes.forEach((route) => {
         console.log(`${method.padEnd(7)} ${route.pattern}`);
       });
     });
-    
+
     if (this._wsRoutes.size > 0) {
       console.log("\n🔌 WebSocket Routes:");
       this._wsRoutes.forEach((_, pattern) => {
         console.log(`WS      ${pattern}`);
       });
     }
-    
+
     console.log("=".repeat(50) + "\n");
   }
 }

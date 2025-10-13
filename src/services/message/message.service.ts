@@ -37,7 +37,7 @@ export class MessageService {
   public broadcastOnlineUsers(): void {
     const message = JSON.stringify({
       type: 'online_users',
-      users: this.getOnlineUsers(),
+      users: this.getOnlineUsers().map(u => u.userName), // <- solo strings
       timestamp: new Date().toISOString(),
     });
     this.broadcast(message);
