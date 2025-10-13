@@ -100,13 +100,11 @@ export class Router {
           },
         });
       }
-      if (req.headers.get("upgrade") === "websocket") {
+      if (req.headers.get("upgrade")?.toLowerCase() === "websocket") {
         console.log('🔌 WebSocket upgrade request');
         for (const [pattern, handler] of this._wsRoutes.entries()) {
           const urlPattern = new URLPattern({ pathname: pattern });
           if (urlPattern.exec(url)) {
-            // 🔴 IMPORTANTE: devolver la respuesta de upgrade tal cual
-            // NADA de addCorsHeaders aquí
             return await handler(req);
           }
         }
