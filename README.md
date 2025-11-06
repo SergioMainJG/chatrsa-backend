@@ -8,6 +8,8 @@ Backend de aplicación de chat con encriptación RSA, construido con **Deno** y 
 
 ### ✅ Funcionalidades Completadas (61%)
 
+
+
 ```
 Infraestructura:      ████████████████████ 100%
 Autenticación:        ████████████████████ 100%
